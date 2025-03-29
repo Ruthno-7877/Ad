@@ -1,0 +1,140 @@
+<!DOCTYPE html><html lang="ht">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AD Kontab - Vann Pwodwi</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.2/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; color: #333; padding: 20px; }
+        h1, h2 { text-align: center; color: #004080; }
+        .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); border-radius: 10px; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; text-align: center; }
+        table, th, td { border: 1px solid #ddd; }
+        th, td { padding: 10px; }
+        button { padding: 10px 20px; background-color: #4CAF50; color: white; border: none; cursor: pointer; margin-top: 10px; border-radius: 5px; transition: transform 0.3s; }
+        button:hover { transform: scale(1.05); }
+        .form-group { margin-bottom: 10px; }
+        input, select { width: 100%; padding: 8px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; }
+        .hidden { display: none; }
+        @media (max-width: 600px) { table, th, td { font-size: 14px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Vann Pwodwi</h1>
+        <div class="form-group">
+            <label for="productSelect">Chwazi yon pwodwi:</label>
+            <select id="productSelect"></select>
+        </div>
+        <div class="form-group">
+            <label for="quantitySold">Kantite vann:</label>
+            <input type="number" id="quantitySold" placeholder="Antre kantite a">
+        </div>
+        <button onclick="recordSale()">Anrejistre Vann</button>
+        <button onclick="quickSell()">Vann Pi Plis Vann</button>
+        <input type="text" id="searchProduct" placeholder="Chèche yon pwodwi" onkeyup="findProduct()"><h2>Vann ki fèt</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Pwodwi</th>
+                <th>Kantite</th>
+                <th>Pri Total</th>
+                <th>Dat</th>
+            </tr>
+        </thead>
+        <tbody id="salesList"></tbody>
+    </table>
+    <button onclick="downloadSalesReport()">Telechaje Rapò</button>
+</div>
+    <button onclick="window.location.href='kontab.html';">Ale nan akey </button>
+<script>
+    let products = JSON.parse(localStorage.getItem("products")) || [];
+    let sales = JSON.parse(localStorage.getItem("sales")) || [];
+
+    function populateProductSelect() {
+        const select = document.getElementById("productSelect");
+        select.innerHTML = "";
+        products.forEach((product, index) => {
+            const option = document.createElement("option");
+            option.value = index;
+            option.textContent = product.name;
+            select.appendChild(option);
+        });
+    }
+
+    function recordSale() {
+        const productIndex = document.getElementById("productSelect").value;
+        const quantity = parseInt(document.getElementById("quantitySold").value);
+        const product = products[productIndex];
+
+        if (!quantity || quantity > product.quantity - product.sold) {
+            alert("Kantite pa bon oswa li twòp!");
+            return;
+        }
+
+        const date = new Date().toLocaleDateString();
+        const totalPrice = quantity * product.sellPrice;
+
+        product.sold += quantity;
+        localStorage.setItem("products", JSON.stringify(products));
+
+        sales.push({ productName: product.name, quantity, totalPrice, date });
+        localStorage.setItem("sales", JSON.stringify(sales));
+        populateSalesList();
+    }
+
+    function quickSell() {
+        const bestSeller = sales.reduce((acc, sale) => (acc.quantity > sale.quantity ? acc : sale), sales[0]);
+        if (bestSeller) {
+            document.getElementById("productSelect").value = products.findIndex(p => p.name === bestSeller.productName);
+            document.getElementById("quantitySold").value = 1;
+        }
+    }
+
+    function findProduct() {
+        const input = document.getElementById("searchProduct").value.toLowerCase();
+        const select = document.getElementById("productSelect");
+        for (let i = 0; i < select.options.length; i++) {
+            let option = select.options[i];
+            option.style.display = option.text.toLowerCase().includes(input) ? "block" : "none";
+        }
+    }
+
+    function populateSalesList() {
+        const salesList = document.getElementById("salesList");
+        salesList.innerHTML = "";
+        sales.forEach(sale => {
+            salesList.innerHTML += `
+                <tr>
+                    <td>${sale.productName}</td>
+                    <td>${sale.quantity}</td>
+                    <td>${sale.totalPrice} $HT</td>
+                    <td>${sale.date}</td>
+                </tr>`;
+        });
+    }
+
+    function downloadSalesReport() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        let y = 10;
+        doc.text("Rapò Vann", 10, y);
+        y += 10;
+
+        sales.forEach(sale => {
+            doc.text(`Pwodwi: ${sale.productName}, Kantite: ${sale.quantity}, Pri Total: ${sale.totalPrice} $HT, Dat: ${sale.date}`, 10, y);
+            y += 10;
+        });
+
+        doc.save("rapò_vann.pdf");
+    }
+
+    window.onload = function() {
+        populateProductSelect();
+        populateSalesList();
+    };
+</script>
+
+</body>
+</html>

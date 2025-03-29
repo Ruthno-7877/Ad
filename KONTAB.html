@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ht">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    	
+    <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-analytics.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDXXkd6VPQGQe6f9AnwaAeS8Q0k4br3YBE",
+    authDomain: "ad-teknoloji.firebaseapp.com",
+    projectId: "ad-teknoloji",
+    storageBucket: "ad-teknoloji.appspot.com",
+    messagingSenderId: "491407257383",
+    appId: "1:491407257383:web:f362c2b1c575f479194302",
+    measurementId: "G-P968TTM090"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+    <title>AD Kontab - Jere biznis ou</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.2/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #d0e7ff; color: #333; padding: 20px; }
+        h1 { color: #004080; text-align: center; font-size: 2em; text-transform: uppercase; cursor: pointer; }
+        .container { max-width: 800px; margin: 0 auto; background-color: white; padding: 20px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); border-radius: 10px; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+        table, th, td { border: 1px solid #ddd; }
+        th, td { padding: 8px; text-align: left; }
+        .form-group { margin-bottom: 10px; }
+        input, select { padding: 8px; width: 100%; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; background-color: #ff6666; color: white; border: none; cursor: pointer; margin: 5px; border-radius: 5px; transition: 0.3s; }
+        button:hover { background-color: #cc0000; transform: scale(1.05); }
+        .hidden { display: none; }
+        .search-bar { margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: block; margin: 0 auto; width: 150px; }
+        .profit-display { text-align: right; font-weight: bold; }
+        .currency-select { margin-left: 10px; }
+        .excel-btn { background-color: #4CAF50; color: white; margin-top: 10px; }
+        @media (max-width: 600px) {
+            .container { padding: 10px; }
+            table, th, td { font-size: 14px; }
+            .search-bar { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="companyTitle" onclick="loadCompanyName()">Nom antrepriz lanh ap paret</h1>
+        <div class="form-group">
+            <label for="companyName">JERE TI BIZNIS </label>
+            <input type="text" id="companyName" placeholder="Entrez le nom de votre entreprise">
+            <button onclick="updateCompanyTitle()">Antre</button>
+        </div>
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Chercher un produit..." onkeyup="searchProduct()">
+            <span class="profit-display" id="totalProfit">Bénéfice Total: 0 HTG</span>
+            <select id="currencySelect" class="currency-select" onchange="changeCurrency()">
+                <option value="HTG">HTG</option>
+                <option value="USD">$ht</option>
+            </select>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Pwodwi </th>
+                    <th>Pri achte</th>
+                    <th>Pri vant</th>
+                    <th>Estok </th>
+                    <th>Benefis(%)</th>
+                    <th>Dat</th>
+                    <th> Opsyon</th>
+                </tr>
+            </thead>
+            <tbody id="productList"></tbody>
+        </table>
+        <div class="download-btns">
+            <button onclick="toggleAddProduct()">+ Ajouter Produit</button>
+            <button onclick="generateReport('day')">Rapport Journalier</button>
+            <button onclick="generateReport('week')">Rapport Hebdomadaire</button>
+            <button onclick="generateReport('month')">Rapport Mensuel</button>
+            <button onclick="downloadExcel()">Télécharger Données</button>
+        </div>
+        <div id="addProductForm" class="hidden">
+            <div class="form-group">
+                <label for="productName">Nom produit:</label>
+                <input type="text" id="productName">
+            </div>
+            <div class="form-group">
+                <label for="buyPrice">Prix d'achat:</label>
+                <input type="number" id="buyPrice">
+            </div>
+            <div class="form-group">
+                <label for="sellPrice">Prix de vente:</label>
+                <input type="number" id="sellPrice">
+            </div>
+            <div class="form-group">
+                <label for="quantityBought">Quantité:</label>
+                <input type="number" id="quantityBought">
+            </div>
+            <div class="form-group">
+                <label for="productDate">Date:</label>
+                <input type="date" id="productDate">
+            </div>
+            <button onclick="addProduct()">Ajouter Produit</button>
+        </div>
+    </div>
+    <button onclick="window.location.href='VANT.html';">Accéder à la page de ventes</button>
+    
+    <script>
+document.addEventListener("DOMContentLoaded", () => {
+    loadProducts();
+});
+
+let products = JSON.parse(localStorage.getItem("products")) || [];
+let currency = "HTG";
+const exchangeRate = 5; // 5 HTG = 1 $HT
+
+// Fonksyon pou chanje lajan
+function toggleCurrency() {
+    currency = (currency === "HTG") ? "$HT" : "HTG";
+    document.getElementById("currencyLabel").innerText = currency;
+    loadProducts();
+}
+
+// Fonksyon pou chaje lis pwodwi yo
+function loadProducts() {
+    const productList = document.getElementById("productList");
+    productList.innerHTML = "";
+
+    products.forEach((product, index) => {
+        const row = document.createElement("tr");
+
+        let buyPrice = currency === "$HT" ? (product.buyPrice / exchangeRate).toFixed(2) : product.buyPrice;
+        let sellPrice = currency === "$HT" ? (product.sellPrice / exchangeRate).toFixed(2) : product.sellPrice;
+
+        row.innerHTML = `
+            <td>${product.name}</td>
+            <td>${buyPrice} ${currency}</td>
+            <td>${sellPrice} ${currency}</td>
+            <td>${product.stock}</td>
+            <td>${product.profit}%</td>
+            <td>${product.date}</td>
+            <td><button onclick="deleteProduct(${index})">Efase</button></td>
+        `;
+        productList.appendChild(row);
+    });
+
+    localStorage.setItem("products", JSON.stringify(products));
+}
+
+// Fonksyon pou ajoute nouvo pwodwi
+function addProduct() {
+    const name = document.getElementById("productName").value;
+    const buyPrice = parseFloat(document.getElementById("buyPrice").value);
+    const sellPrice = parseFloat(document.getElementById("sellPrice").value);
+    const stock = parseInt(document.getElementById("quantityBought").value);
+    const date = document.getElementById("productDate").value;
+
+    if (!name || !buyPrice || !sellPrice || !stock || !date) {
+        alert("Tanpri ranpli tout chan yo!");
+        return;
+    }
+
+    const profit = (((sellPrice - buyPrice) / buyPrice) * 100).toFixed(2);
+
+    products.push({ name, buyPrice, sellPrice, stock, profit, date });
+    localStorage.setItem("products", JSON.stringify(products));
+
+    loadProducts();
+    clearForm();
+}
+
+// Fonksyon pou efase yon pwodwi
+function deleteProduct(index) {
+    if (confirm("Eske ou vle efase pwodwi sa?")) {
+        products.splice(index, 1);
+        localStorage.setItem("products", JSON.stringify(products));
+        loadProducts();
+    }
+}
+
+// Fonksyon pou efase fòm lan apre yon pwodwi ajoute
+function clearForm() {
+    document.getElementById("productName").value = "";
+    document.getElementById("buyPrice").value = "";
+    document.getElementById("sellPrice").value = "";
+    document.getElementById("quantityBought").value = "";
+    document.getElementById("productDate").value = "";
+}
+
+// Fonksyon pou jenere rapò dapre peryòd
+function generateReport(period) {
+    let filteredProducts = [];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    products.forEach(product => {
+        const productDate = new Date(product.date);
+        productDate.setHours(0, 0, 0, 0);
+
+        if (
+            (period === "day" && productDate.getTime() === today.getTime()) ||
+            (period === "week" && productDate >= new Date(today.setDate(today.getDate() - 7))) ||
+            (period === "month" && productDate.getMonth() === new Date().getMonth())
+        ) {
+            filteredProducts.push(product);
+        }
+    });
+
+    console.log(`Rapò pou ${period}:`, filteredProducts);
+    alert(`Rapò pou ${period} disponib nan console!`);
+}
+
+// Fonksyon pou telechaje done yo kòm fichye Excel
+function downloadExcel() {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Non,Pri Achte,Pri Vann,Stock,Benefis (%),Dat\n";
+
+    products.forEach(product => {
+        let buyPrice = currency === "$HT" ? (product.buyPrice / exchangeRate).toFixed(2) : product.buyPrice;
+        let sellPrice = currency === "$HT" ? (product.sellPrice / exchangeRate).toFixed(2) : product.sellPrice;
+
+        csvContent += `${product.name},${buyPrice} ${currency},${sellPrice} ${currency},${product.stock},${product.profit},${product.date}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "products.csv");
+    document.body.appendChild(link);
+    link.click();
+}
+
+// Fonksyon pou montre/oskli bouton ajoute pwodwi a
+function toggleAddProduct() {
+    const form = document.getElementById("addProductForm");
+    form.classList.toggle("hidden");
+}
+    </script>
+
+    <footer style="text-align: center; margin-top: 30px;">
+        <p>© Ruthno.7877 tout droit réservé</p>
+        <p>Utilisez ce site pour enregistrer des produits, suivre vos ventes et générer des rapports détaillés en HTG ou $HT.</p>
+    </footer>
+</body>
+</html>
